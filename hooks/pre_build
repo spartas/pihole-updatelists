@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+set -eu
+source hooks/.config
+
+# Try to work with the default builder...
+echo "⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯"
+echo "Registering qemu-*-static for all supported processors except current"
+docker run --rm --privileged multiarch/qemu-user-static:register --reset
+
+# ... but if we can't build all architectures with it...
+BUILDERS=`docker buildx ls`
+CAN_PROCEED=1
+for arch in ${ARCHITECTURES_TO_BUILD[@]}; do
+    if ! echo ${BUILDERS} | grep -q ${image_platform_map[${arch}]}; then
+        echo "Support for building ${image_platform_map[${arch}]} not found"
+        CAN_PROCEED=0
+    fi
+done
+
+# ... install a fresh one
+if [ "${CAN_PROCEED}" == 0 ]; then
+    BUILDER_NAME=multiarch-builder
+
+    # Do not re-install when it's already there
+    if ! docker buildx inspect ${BUILDER_NAME} &> /dev/null; then
+        echo "⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯"
+        echo "Installing new builder instance (${BUILDER_NAME})"
+        docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+        docker buildx rm ${BUILDER_NAME} &> /dev/null || true
+        docker buildx create --name ${BUILDER_NAME} --driver docker-container --use
+    fi
+
+    docker buildx inspect ${BUILDER_NAME} --bootstrap
+fi
+
+echo "⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯"
+echo "Available builder instances"
+docker buildx ls
+
+echo "⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯"
+echo "Current working directory: $PWD"
+ls -al
+
+echo "⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯"
+echo "Build variables (https://docs.docker.com/docker-hub/builds/advanced/)"
+echo "SOURCE_BRANCH:   $SOURCE_BRANCH"
+echo "SOURCE_COMMIT:   $SOURCE_COMMIT"
+echo "COMMIT_MSG:      $COMMIT_MSG"
+echo "DOCKERFILE_PATH: $DOCKERFILE_PATH"
+echo "DOCKER_REPO:     $DOCKER_REPO"
+echo "DOCKER_TAG:      $DOCKER_TAG"
+echo "IMAGE_NAME:      $IMAGE_NAME"

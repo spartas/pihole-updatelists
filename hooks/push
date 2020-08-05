@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+set -eu
+source hooks/.config
+
+IMAGE_NAME="${IMAGE_NAME//index.docker.io\/}"
+for arch in ${ARCHITECTURES_TO_BUILD[@]}; do
+  echo "⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯"
+  echo "Pushing ${IMAGE_NAME}-${arch}"
+  docker push ${IMAGE_NAME}-${arch}
+done
+docker image ls
+
+echo "⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯"
+echo "Creating manifest ${IMAGE_NAME}"
+manifests=""
+for arch in ${ARCHITECTURES_TO_BUILD[@]}; do
+  manifests="${manifests} ${IMAGE_NAME}-${arch}"
+done
+docker manifest create ${IMAGE_NAME} $manifests
+
+echo "⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯"
+echo "Annotating manifest"
+for arch in ${ARCHITECTURES_TO_BUILD[@]}; do
+  VARIANT=
+  if [ "${manifest_variant_map[${arch}]}" != "" ]; then
+    VARIANT="--variant ${manifest_variant_map[${arch}]}"
+  fi
+
+  docker manifest annotate ${IMAGE_NAME} \
+    ${IMAGE_NAME}-${arch} \
+    --os linux \
+    --arch ${manifest_architecture_map[${arch}]} \
+    $VARIANT
+done
+
+echo "⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯"
+echo "Inspecting manifest ${IMAGE_NAME}-${arch}"
+docker manifest inspect ${IMAGE_NAME}-${arch}
+
+echo "⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯"
+echo "Pushing manifest ${IMAGE_NAME}"
+docker manifest push --purge "${IMAGE_NAME}"

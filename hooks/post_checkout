@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+set -eu
+source hooks/.config
+
+# Install additional packages
+if \
+  ! command -v curl &> /dev/null || \
+  ! command -v qemu-x86_64-static &> /dev/null || \
+  [ ! -d "/usr/lib/binfmt-support" ] \
+; then
+  echo "⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯"
+  echo "Installing additional packages"
+  apt-get update
+  apt-get install -y curl qemu-user-static binfmt-support
+fi
+
+# Make sure we have experimental features enabled
+DOCKER_CFG=~/.docker/config.json
+if [ ! -f ${DOCKER_CFG} ] || ! cat ${DOCKER_CFG} | grep -q "\"experimental\": \"enabled\""; then
+  if [ ! -f ${DOCKER_CFG} ]; then
+    mkdir -vp ~/.docker
+
+    if [ -z "${DOCKERCFG}" ]; then
+      echo "{\"auths\":{}}" > ${DOCKER_CFG}
+    else
+      echo "${DOCKERCFG}" > ${DOCKER_CFG}
+    fi
+  fi
+
+  if ! cat ${DOCKER_CFG} | grep -q "\"experimental\": \"enabled\""; then
+    echo "⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯"
+    echo "Enabling experimental features in ${DOCKER_CFG}"
+    sed -i -E '$ s/.$/,\"experimental\"\:\"enabled\"}/' ${DOCKER_CFG}
+  fi
+fi
